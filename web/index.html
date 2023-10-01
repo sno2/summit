@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Webcam Image Capture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 100vh;
+        font-family: Inter;
+      }
+
+      h1 {
+        position: fixed;
+        top: 20%;
+        z-index: 100;
+        left: 50%;
+        width: 100vw;
+        text-align: center;
+        transform: translate(-50%, 0);
+      }
+
+      h2 {
+        position: fixed;
+        bottom: 20%;
+        z-index: 100;
+        left: 50%;
+        width: 100vw;
+        text-align: center;
+        transform: translate(-50%, 0);
+        color: #777;
+      }
+
+      #video-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+        object-fit: cover;
+      }
+
+      #video {
+        width: 100vw;
+      }
+
+      #captured-images {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 20px;
+      }
+      .captured-image {
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="message"></h1>
+    <div id="video-container">
+      <video id="video" autoplay playsinline></video>
+    </div>
+    <h2 id="score"></h2>
+
+    <div id="captured-images"></div>
+
+    <script>
+      /** @type {MediaStream} */
+      let stream;
+
+      async function startCamera() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          const videoElement = document.getElementById("video");
+          videoElement.srcObject = stream;
+        } catch (error) {
+          console.error("Error accessing the webcam:", error);
+        }
+      }
+
+      const $message = document.querySelector("h1");
+      const $score = document.querySelector("h2");
+
+      async function captureImageFromVideo() {
+        /** @type {HTMLVideoElement} */
+        const video = document.getElementById("video");
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(async (blob) => {
+          const form = new FormData();
+          form.append("file", blob);
+
+          const result = await fetch("/upload", {
+            method: "POST",
+            body: form,
+          });
+
+          const data = await result.json();
+
+          if (data.is_climbeable) {
+            $message.textContent = "Take to the skies!";
+            $score.textContent = (data.score * 100).toFixed(2) + "%";
+          } else {
+            $message.textContent = "Danger! Unsafe tree.";
+            $score.textContent = "";
+          }
+        });
+        // const data = await result.json();
+        // console.log(data);
+      }
+
+      startCamera();
+      setInterval(captureImageFromVideo, 1000); // Capture an image every 2 seconds
+    </script>
+  </body>
+</html>
